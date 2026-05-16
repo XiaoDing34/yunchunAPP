@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.tianjinagriculture.yunchunapp.mapper.UserMapper">
+    <select id="selectRoleById" resultType="java.lang.String">
+        SELECT
+            r.role_name
+        FROM
+            app_user u,
+            ROLE r,
+            t_user_role ur
+        WHERE
+            u.user_id = #{loginId}
+          AND ur.user_id = u.user_id
+          AND r.role_id = ur.role_id
+    </select>
+
+    <select id="selectPermissionById" resultType="java.lang.String">
+        SELECT P.url
+        FROM
+            permission P,
+            t_role_permission rp,
+            t_user_role ur
+        WHERE
+            ur.user_id = #{loginId}
+          AND rp.role_id = ur.role_id
+          AND P.permission_id = rp.permission_id
+    </select>
+</mapper>
