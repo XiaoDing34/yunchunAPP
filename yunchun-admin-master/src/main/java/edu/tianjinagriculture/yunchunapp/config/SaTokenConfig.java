@@ -35,7 +35,7 @@ public class SaTokenConfig implements WebMvcConfigurer {
                     //SaRouter.match("/**", "/user/doLogin", () -> StpUtil.checkLogin());
                     SaRouter
                             .match("/**")    // 拦截的 path 列表，可以写多个 */
-                            .notMatch("/appUser/doLogin","/appUser/saveAppUser","/appUser/isLogin","/appUser/wechatLogin","/appUser/login","/appUser/sendVerifyCode")        // 排除掉的 path 列表，可以写多个
+                            .notMatch("/appUser/doLogin","/appUser/saveAppUser","/appUser/isLogin","/appUser/wechatLogin","/appUser/login","/appUser/sendVerifyCode","/mqtt/**","/deviceValue/**")        // 排除掉的 path 列表，可以写多个
                             .check(r -> StpUtil.checkLogin());        // 要执行的校验动作，可以写完整的 lambda 表达式
 
                     // 更多拦截处理方式，请参考“路由拦截式鉴权”章节 */

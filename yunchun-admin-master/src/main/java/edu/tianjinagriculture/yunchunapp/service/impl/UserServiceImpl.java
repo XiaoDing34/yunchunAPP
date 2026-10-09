@@ -12,6 +12,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.github.qcloudsms.SmsSingleSender;
 import com.github.qcloudsms.SmsSingleSenderResult;
 import com.github.qcloudsms.httpclient.HTTPException;
+import com.qcloud.cos.COSClient;
+import com.qcloud.cos.model.ObjectMetadata;
 import edu.tianjinagriculture.yunchunapp.VO.LoginVO;
 import edu.tianjinagriculture.yunchunapp.VO.UserInfoVO;
 import edu.tianjinagriculture.yunchunapp.VO.UserPhoneVo;
@@ -58,6 +60,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Autowired
     FeedbackMapper feedbackMapper;
+
+    @Autowired
+    private COSClient cosClient;
 
     @Override
     public LoginVO wechatLogin(String code) {
@@ -114,29 +119,29 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Value("${file.upload-dir}")
     private String uploadDir; // 例如 /data/uploads/
     @Override
-    public String updateAvatar(Integer userId, MultipartFile file) {
-        // 确保目录存在
-        File dir = new File(uploadDir);
-        if (!dir.exists()) {
-            dir.mkdirs();  // 创建多级目录
-        }
-        // 校验文件类型
-        String contentType = file.getContentType();
-        if (!contentType.startsWith("image/")) {
-            throw new RuntimeException("只能上传图片");
-        }
-        // 生成文件名
-        String originalFilename = file.getOriginalFilename();
-        String ext = originalFilename.substring(originalFilename.lastIndexOf("."));
-        String filename = userId + "_" + System.currentTimeMillis() + ext;
-        File dest = new File(uploadDir, filename);
-        try {
-            file.transferTo(dest);
-        } catch (IOException e) {
-            throw new RuntimeException("文件保存失败", e);
-        }
-        String avatarUrl = "/uploads/" + filename; // 访问路径
-        //System.out.println(avatarUrl);
+    public String updateAvatar(Integer userId, String avatarUrl) {
+//        // 确保目录存在
+//        File dir = new File(uploadDir);
+//        if (!dir.exists()) {
+//            dir.mkdirs();  // 创建多级目录
+//        }
+//        // 校验文件类型
+//        String contentType = file.getContentType();
+//        if (!contentType.startsWith("image/")) {
+//            throw new RuntimeException("只能上传图片");
+//        }
+//        // 生成文件名
+//        String originalFilename = file.getOriginalFilename();
+//        String ext = originalFilename.substring(originalFilename.lastIndexOf("."));
+//        String filename = userId + "_" + System.currentTimeMillis() + ext;
+//        File dest = new File(uploadDir, filename);
+//        try {
+//            file.transferTo(dest);
+//        } catch (IOException e) {
+//            throw new RuntimeException("文件保存失败", e);
+//        }
+//        String avatarUrl = "/uploads/" + filename; // 访问路径
+//        //System.out.println(avatarUrl);
         // 更新数据库
         //System.out.println(userId);
         UpdateWrapper<User> updateWrapper = new UpdateWrapper<>();
@@ -348,9 +353,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
-    public List<UserPhoneVo> getAll(Integer userId) {
+    public List<UserPhoneVo> getAll() {
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("user_id", userId);
         List<User> list=list(queryWrapper);
         List<UserPhoneVo> userPhoneVoList=new ArrayList<UserPhoneVo>();
         for (User user : list) {
@@ -361,6 +365,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 userPhoneVo.setUsername(user.getUsername());
             }
             userPhoneVo.setPhone(user.getPhone());
+            userPhoneVo.setPosition(user.getPosition());
             userPhoneVoList.add(userPhoneVo);
         }
         return userPhoneVoList;
@@ -411,5 +416,89 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
         return "success";
 
+    }
+
+    //修改密码
+    @Override
+    public String changePassword(Integer userId, String oldPassword, String newPassword) {
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new RuntimeException("用户不存在");
+        }
+        //校验原密码
+        if (user.getPassword() == null || !BCrypt.checkpw(oldPassword, user.getPassword())) {
+            throw new RuntimeException("原密码错误");
+        }
+        //新密码不能与原密码相同
+        if (BCrypt.checkpw(newPassword, user.getPassword())) {
+            throw new RuntimeException("新密码不能与原密码相同");
+        }
+        //BCrypt加密后更新
+        String newHash = BCrypt.hashpw(newPassword, BCrypt.gensalt());
+        UpdateWrapper<User> updateWrapper = new UpdateWrapper<>();
+        updateWrapper.eq("user_id", userId).set("password", newHash);
+        userMapper.update(null, updateWrapper);
+        return "密码修改成功";
+    }
+
+    @Override
+    public Integer checkHasPassword(Integer userId) {
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("user_id", userId);
+        User user=getOne(queryWrapper);
+        if (user.getPassword()== null) {
+            return 0;
+        }
+        return 1;
+    }
+
+    //设置密码
+    @Override
+    public String setPassword(Integer userId, String newPassword) {
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new RuntimeException("用户不存在");
+        }
+        if (user.getPassword() != null) {
+            throw new RuntimeException("该用户已设置密码，请使用修改密码功能");
+        }
+        String newHash = BCrypt.hashpw(newPassword, BCrypt.gensalt());
+        UpdateWrapper<User> updateWrapper = new UpdateWrapper<>();
+        updateWrapper.eq("user_id", userId).set("password", newHash);
+        userMapper.update(null, updateWrapper);
+        return "密码设置成功";
+    }
+
+    //上传用户头像
+
+    @Value("${tencent.cos.bucket-name}")
+    private String bucketName;
+    @Value("${tencent.cos.region}")
+    private String region;
+
+    /**
+     * 上传头像文件，返回永久访问 URL
+     */
+    public String uploadAvatar(MultipartFile file, Integer userId) {
+        // 1. 生成唯一文件名：avatar/{userId}_{时间戳}.{后缀}
+        String originalFilename = file.getOriginalFilename();
+        String suffix = ".jpg"; // 默认jpg，可从originalFilename提取
+        if (originalFilename != null && originalFilename.contains(".")) {
+            suffix = originalFilename.substring(originalFilename.lastIndexOf("."));
+        }
+        String key = "avatar/" + userId + "_" + System.currentTimeMillis() + suffix;
+
+        // 2. 上传到 COS
+        try {
+            ObjectMetadata metadata = new ObjectMetadata();
+            metadata.setContentLength(file.getSize());
+            metadata.setContentType(file.getContentType());
+            cosClient.putObject(bucketName, key, file.getInputStream(), metadata);
+        } catch (Exception e) {
+            throw new RuntimeException("头像上传失败", e);
+        }
+
+        // 3. 拼接永久访问 URL（公有读存储桶直接拼接即可）
+        return "https://img.yunchunremote.cn/" + key;
     }
 }

@@ -6,4 +6,5 @@ import lombok.Data;
 public class UserPhoneVo {
     private String username;
     private String phone;
+    private String position;
 }

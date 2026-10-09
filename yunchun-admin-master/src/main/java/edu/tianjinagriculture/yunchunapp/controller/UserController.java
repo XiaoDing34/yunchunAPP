@@ -27,6 +27,7 @@ public class UserController {
     @Autowired
     private UserService userService;
 
+
     @Autowired
     WechatLoginServiceImpl wechatLoginService;
 
@@ -74,24 +75,27 @@ public class UserController {
         }
         return Result.error(r);
     }
-    /**
-     * 上传头像
-     * @param file 上传的文件
-     * @param request 用于获取当前登录用户
-     * @return 头像URL
-     */
-    @PostMapping("/avatar")
-    //@SaCheckLogin
-    public Result<String> uploadAvatar(@RequestParam("file") MultipartFile file, HttpServletRequest request) {
+
+
+    @PostMapping("/upload/avatar")
+    public Result<String> uploadAvatar(
+            @RequestParam("file") MultipartFile file) {
+
         Integer userId = StpUtil.getLoginIdAsInt();
-        String avatarUrl = userService.updateAvatar(userId, file);
+
+        // 1. 上传到 COS，获取永久 URL
+        String avatarUrl = userService.uploadAvatar(file, userId);
+
+        // 2. 更新用户表
+        userService.updateAvatar(userId, avatarUrl);
+
         return Result.success(avatarUrl);
     }
 
     //更新用户昵称
     @PutMapping("/nickname")
     @SaCheckLogin
-    public Result<String> updateNickname(@RequestBody String nickname, HttpServletRequest request) {
+    public Result<String> updateNickname(@RequestParam String nickname) {
         Integer userId = StpUtil.getLoginIdAsInt();
         //String nickname = body.get("nickname");
         System.out.println(userId);
@@ -114,6 +118,50 @@ public class UserController {
         return Result.success(phone);
     }
 
+    @GetMapping("/hasPassword")
+    public Result<Integer> checkHasPassword() {
+        Integer userId = StpUtil.getLoginIdAsInt();
+        //0代表微信登录未设置密码，1代表注册用户，已经设置密码
+        Integer result=userService.checkHasPassword(userId);
+        return Result.success(result);
+    }
+
+    //修改密码
+    @PutMapping("/password")
+    @SaCheckLogin
+    public Result<String> changePassword(@RequestBody ChangePasswordDTO changePasswordDTO) {
+        Integer userId = StpUtil.getLoginIdAsInt();
+        String oldPassword = changePasswordDTO.getOldPassword();
+        String newPassword = changePasswordDTO.getNewPassword();
+        String confirmPassword = changePasswordDTO.getConfirmPassword();
+        if (oldPassword == null || oldPassword.trim().isEmpty()) {
+            throw new RuntimeException("原密码不能为空");
+        }
+        if (newPassword == null || newPassword.trim().isEmpty()) {
+            throw new RuntimeException("新密码不能为空");
+        }
+        if (!newPassword.equals(confirmPassword)) {
+            throw new RuntimeException("两次输入的新密码不一致");
+        }
+        return Result.success(userService.changePassword(userId, oldPassword, newPassword));
+    }
+
+    //设置密码（首次设置，无需原密码）
+    @PostMapping("/setPassword")
+    @SaCheckLogin
+    public Result<String> setPassword(@RequestBody SetPasswordDTO setPasswordDTO) {
+        Integer userId = StpUtil.getLoginIdAsInt();
+        String newPassword = setPasswordDTO.getNewPassword();
+        String confirmPassword = setPasswordDTO.getConfirmPassword();
+        if (newPassword == null || newPassword.trim().isEmpty()) {
+            throw new RuntimeException("新密码不能为空");
+        }
+        if (!newPassword.equals(confirmPassword)) {
+            throw new RuntimeException("两次输入的新密码不一致");
+        }
+        return Result.success(userService.setPassword(userId, newPassword));
+    }
+
     /**
      * 查询当前登录的用户信息
      */
@@ -128,14 +176,13 @@ public class UserController {
      * 获取所有用户
      * @return
      */
-    @SaCheckRole(value = "负责人")
     @GetMapping("/getAll")
     //@SaCheckPermission("user.list")
     public Result<List<UserPhoneVo>> getAll() {
         //List<User> list=userService.list();
         //return Result.success("获取成功",list);
         Integer userId = StpUtil.getLoginIdAsInt();
-        return Result.success(userService.getAll(userId));
+        return Result.success(userService.getAll());
     }
 
     @RequestMapping("/wxLogin")
@@ -151,6 +198,8 @@ public class UserController {
         System.out.println(feedbackDTO);
         return Result.success(userService.postFeedback(feedbackDTO));
     }
+
+    
 
     // 登录接口
     @RequestMapping("/doLogin")

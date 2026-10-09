@@ -21,4 +21,8 @@ public class WarnMessage {
     private String advice;
     private String warnLevel;
     private String warnOrganization;
+    private String audioUrl;
+    private Integer feedbackStatus;
+    private Integer handleStatus;
+    private Integer handlerId;
 }

@@ -16,7 +16,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RuntimeException.class)
     public Result<String> handle(RuntimeException e){
-        SaHolder.getResponse().setStatus(400);
+        SaHolder.getResponse().setStatus(500);
         return Result.error(e.getMessage());
     }
 }

@@ -14,7 +14,7 @@ import java.util.List;
 public interface UserService extends IService<User> {
     LoginVO wechatLogin(String code);
 
-    String updateAvatar(Integer userId, MultipartFile file);
+    String updateAvatar(Integer userId, String avatarUrl);
 
     void updateNickname(Integer userId, String nickname);
 
@@ -33,9 +33,17 @@ public interface UserService extends IService<User> {
 
     UserInfoVO getUserInfoById(Integer userId);
 
-    List<UserPhoneVo> getAll(Integer userId);
+    List<UserPhoneVo> getAll();
 
     void sendVerifyCode(String pone);
 
     String postFeedback(FeedbackDTO feedbackDTO);
+
+    String changePassword(Integer userId, String oldPassword, String newPassword);
+
+    Integer checkHasPassword(Integer userId);
+
+    String setPassword(Integer userId, String newPassword);
+
+    String uploadAvatar(MultipartFile file, Integer userId);
 }

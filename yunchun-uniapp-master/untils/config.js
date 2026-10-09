@@ -8,7 +8,8 @@
 // export default {
 //   baseURL
 // };
-let baseURL = 'https://yunchunremote.cn/yunChunApp'; // 直接写死，不再判断环境
+let baseURL = 'http://localhost:9095';
+//let baseURL = 'https://yunchunremote.cn:8443/yunChunApp';
 export default {
   baseURL
 };

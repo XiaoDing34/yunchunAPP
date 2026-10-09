@@ -3,22 +3,62 @@
     <view class="warn-item" :class="'level-' + warnLevelType">
       <view class="warn-indicator"></view>
       <view class="warn-content">
+          <view class="warn-more-btn" @click="showDeleteConfirm">
+            <text class="more-icon">⋯</text>
+          </view>
         <view class="warn-top">
           <view class="warn-title">
-            <text class="warn-icon">{{ getIcon() }}</text>
-            <text class="warn-title-text">{{ messageTitle }}</text>
-            <text class="warn-badge" :class="'badge-' + warnLevelType">{{ warnLevel }}</text>
-          </view>
-          <view class="warn-meta">
-            <view class="warn-source">
-              <image class="source-icon" src="/static/icons/message-user.svg" mode="aspectFit"></image>
-              <text class="source-text">来源：{{ sender }}</text>
+            <view class="warn-title-top">
+              <text class="warn-icon">{{ getIcon() }}</text>
+              <text class="warn-title-text">{{ messageTitle }}</text>
+              <text class="warn-badge" :class="'badge-' + warnLevelType">{{ warnLevel }}</text>
             </view>
-            <text class="warn-time">{{ formatTime(createTime) }}</text>
+            <view class="warn-meta">
+              <view class="warn-source">
+                <image class="source-icon" src="/static/icons/message-user.svg" mode="aspectFit"></image>
+                <text class="source-text">来源：{{ sender }}</text>
+              </view>
+              <text class="warn-time">{{ formatTime(createTime) }}</text>
+            </view>
           </view>
         </view>
         <view class="warn-divider"></view>
+
+        <!-- 反馈区域 -->
+        <view class="feedback-section">
+          <!-- 未反馈：显示按钮 -->
+          <view v-if="showFeedbackButtons" class="feedback-row">
+            <text class="feedback-label">报警有效性：</text>
+            <view class="feedback-btn feedback-btn-valid" @click="handleFeedbackValid">
+              <text>有效</text>
+            </view>
+            <view class="feedback-btn feedback-btn-invalid" @click="handleFeedbackInvalid">
+              <text>无效</text>
+            </view>
+          </view>
+          <!-- 已反馈有效 + 未处理 -->
+          <view v-if="feedbackStatusNum === 1 && handleStatusNum === 0" class="feedback-row">
+            <view class="feedback-tag tag-valid">有效</view>
+            <view class="feedback-btn feedback-btn-processed" @click="handleMarkProcessed">
+              <text>标记已处理</text>
+            </view>
+          </view>
+          <!-- 已反馈有效 + 已处理 -->
+          <view v-if="feedbackStatusNum === 1 && handleStatusNum === 1" class="feedback-row">
+            <view class="feedback-tag tag-valid">有效</view>
+            <view class="feedback-tag tag-processed">已处理</view>
+          </view>
+          <!-- 已反馈无效 -->
+          <view v-if="feedbackStatusNum === 2" class="feedback-row">
+            <view class="feedback-tag tag-invalid">无效</view>
+          </view>
+        </view>
+
         <view class="warn-bottom">
+          <view class="warn-voice-btn" @click="handleVoiceClick">
+            <text class="voice-icon">🔊</text>
+            <text class="voice-text">语音播报</text>
+          </view>
           <view class="warn-detail-btn" @click="handleDetailClick">
             <text class="btn-text">查看详情</text>
             <text class="btn-arrow">→</text>
@@ -98,18 +138,23 @@
           </view>
         </view>
         
-        <!-- 5. 关闭按钮 -->
+        <!-- 关闭按钮 -->
         <view class="detail-footer">
           <view class="detail-close-btn" @click="closeDetailPopup">关闭</view>
         </view>
       </view>
     </uni-popup>
-  </view>
+    
+      </view>
 </template>
 
 <script>
   export default {
     props: {
+      warnId: {
+        type: [String, Number],
+        default: ''
+      },
       warnLevel: {
         type: String,
         default: '提示',
@@ -134,6 +179,18 @@
       advice: {
         type: String,
         default: ''
+      },
+      feedbackStatus: {
+        type: [String, Number],
+        default: 0
+      },
+      handleStatus: {
+        type: [String, Number],
+        default: 0
+      },
+      audioUrl: {
+        type: String,
+        default: ''
       }
     },
     computed: {
@@ -144,9 +201,44 @@
           '提示': 'warning'
         };
         return levelMap[this.warnLevel];
+      },
+      feedbackStatusNum() {
+        return Number(this.feedbackStatus) || 0;
+      },
+      handleStatusNum() {
+        return Number(this.handleStatus) || 0;
+      },
+      showFeedbackButtons() {
+        return this.feedbackStatusNum === 0;
+      },
+      showHandleButton() {
+        return this.feedbackStatusNum === 1 && this.handleStatusNum === 0;
       }
     },
+    data() {
+      return {
+        audioCtx: null
+      };
+    },
+    mounted() {
+      this.audioCtx = uni.createInnerAudioContext();
+      this.audioCtx.obeyMuteSwitch = false;
+      this.audioCtx.onError((res) => {
+        console.error('语音播放失败', res);
+        uni.showToast({ title: '播放失败', icon: 'none' });
+      });
+    },
     methods: {
+      handleVoiceClick() {
+        if (!this.audioUrl) {
+          uni.showToast({ title: '该报警暂无语音', icon: 'none' });
+          return;
+        }
+        // 停止当前播放，重置到开头
+        try { this.audioCtx.stop(); } catch (e) {}
+        this.audioCtx.src = this.audioUrl;
+        this.audioCtx.play();
+      },
       formatTime(time) {
         if (!time) return '';
         const date = new Date(time);
@@ -181,6 +273,60 @@
       },
       closeDetailPopup() {
         this.$refs.detailPopup.close();
+      },
+      showDeleteConfirm() {
+        uni.showModal({
+          title: '确认删除',
+          content: '确定要删除这条报警记录吗？',
+          confirmColor: '#DC2626',
+          success: (res) => {
+            if (res.confirm) {
+              this.$emit('delete', this.warnId);
+            }
+          }
+        });
+      },
+      handleFeedbackValid() {
+        uni.showModal({
+          title: '确认',
+          content: '确认该报警为有效报警？',
+          confirmColor: '#10B981',
+          success: (res) => {
+            if (res.confirm) {
+              this.$emit('feedback', { id: this.warnId, feedbackStatus: 1, handleStatus: null });
+            }
+          }
+        });
+      },
+      handleFeedbackInvalid() {
+        uni.showModal({
+          title: '确认',
+          content: '确认该报警为无效报警？',
+          confirmColor: '#EF4444',
+          success: (res) => {
+            if (res.confirm) {
+              this.$emit('feedback', { id: this.warnId, feedbackStatus: 2, handleStatus: 1 });
+            }
+          }
+        });
+      },
+      handleMarkProcessed() {
+        uni.showModal({
+          title: '确认',
+          content: '确认该报警已处理完毕？',
+          confirmColor: '#3B82F6',
+          success: (res) => {
+            if (res.confirm) {
+              this.$emit('feedback', { id: this.warnId, feedbackStatus: null, handleStatus: 1 });
+            }
+          }
+        });
+      }
+    },
+    beforeDestroy() {
+      if (this.audioCtx) {
+        try { this.audioCtx.destroy(); } catch (e) {}
+        this.audioCtx = null;
       }
     }
   };
@@ -307,13 +453,45 @@
 
   .warn-top {
     margin-bottom: 24rpx;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .warn-more-btn {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 64rpx;
+    height: 64rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+  }
+
+  .warn-more-btn:active {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+
+  .more-icon {
+    font-size: 36rpx;
+    color: #9CA3AF;
+    line-height: 1;
   }
 
   .warn-title {
     display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12rpx;
+  }
+
+  .warn-title-top {
+    display: flex;
     align-items: center;
     gap: 12rpx;
-    flex-wrap: wrap;
   }
 
   .warn-icon {
@@ -372,9 +550,109 @@
     margin-bottom: 20rpx;
   }
 
+  /* 反馈区域 */
+  .feedback-section {
+    margin-bottom: 20rpx;
+  }
+
+  .feedback-row {
+    display: flex;
+    align-items: center;
+    gap: 12rpx;
+  }
+
+  .feedback-label {
+    font-size: 26rpx;
+    color: #6B7280;
+    flex-shrink: 0;
+  }
+
+  .feedback-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14rpx 36rpx;
+    border-radius: 36rpx;
+    font-size: 28rpx;
+    font-weight: 600;
+    transition: all 0.2s ease;
+  }
+
+  .feedback-btn:active {
+    opacity: 0.8;
+    transform: scale(0.98);
+  }
+
+  .feedback-btn-valid {
+    background-color: #D1FAE5;
+    color: #059669;
+    border: 1rpx solid #10B981;
+  }
+
+  .feedback-btn-invalid {
+    background-color: #FEE2E2;
+    color: #DC2626;
+    border: 1rpx solid #EF4444;
+  }
+
+  .feedback-btn-processed {
+    background-color: #DBEAFE;
+    color: #2563EB;
+    border: 1rpx solid #3B82F6;
+  }
+
+  .feedback-tag {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10rpx 28rpx;
+    border-radius: 36rpx;
+    font-size: 28rpx;
+    font-weight: 600;
+    color: #fff;
+  }
+
+  .tag-valid {
+    background-color: #10B981;
+  }
+
+  .tag-invalid {
+    background-color: #EF4444;
+  }
+
+  .tag-processed {
+    background-color: #3B82F6;
+  }
+
   .warn-bottom {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .warn-voice-btn {
+    display: flex;
+    align-items: center;
+    gap: 8rpx;
+    padding: 10rpx 20rpx;
+    border-radius: 40rpx;
+    background-color: #E8F5E9;
+    transition: all 0.2s ease;
+  }
+
+  .warn-voice-btn:active {
+    opacity: 0.8;
+    transform: scale(0.98);
+  }
+
+  .voice-icon {
+    font-size: 28rpx;
+  }
+
+  .voice-text {
+    font-size: 26rpx;
+    font-weight: 500;
+    color: #2E7D32;
   }
 
   .warn-detail-btn {

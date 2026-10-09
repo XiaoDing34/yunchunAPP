@@ -170,7 +170,7 @@
           '温度': '°C',
           '频率': 'Hz',
           '液位': 'mm',
-          '压': 'MPa',
+          '压': 'Pa',
           '电压': 'V',
           '电流': 'A',
           '流量': 'm³/h'
@@ -207,6 +207,7 @@
           maxValue: '',
           minValue: '',
           deviceId: this.activeIndex,
+          valueId: this.valueId,
           warnLevel: ''
         };
         this.$refs.customPopup.close();
@@ -224,6 +225,10 @@
               icon: 'success'
             });
           } else {
+            uni.showToast({
+              title: '报警提交失败',
+              icon: 'error'
+            })
             console.log(res.data)
           }
         } catch (err) {
@@ -270,7 +275,7 @@
       handleHistoryClick() {
         console.log('组件的valueId', this.valueId);
         uni.navigateTo({
-          url: `/pages/history/history?valueId=${this.valueId}&valueName=${encodeURIComponent(this.dataName)}`
+          url: `/subpkg/history/history?valueId=${this.valueId}&valueName=${encodeURIComponent(this.dataName)}`
         });
       }
     }
@@ -700,8 +705,9 @@
 
   .suggestion-textarea {
     width: 100%;
-    min-height: 120rpx;
-    padding: 20rpx;
+    min-height: 60rpx;
+    height: 60rpx;
+    padding: 10rpx;
     background-color: #f8fafc;
     border: 1rpx solid #e2e8f0;
     border-radius: 12rpx;

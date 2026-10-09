@@ -1,7 +1,7 @@
 <template>
   <view class="login-container">
     <view class="logo-container">
-      <image class="logo" src="../../static/yunchun.jpg" mode="aspectFit"></image>
+      <image class="logo" src="/static/yunchun.jpg" mode="aspectFit"></image>
     </view>
     <view class="login-form">
       <view class="login-header">
@@ -9,17 +9,17 @@
       </view>
       <!-- 手机号输入 -->
       <view class="input-group">
-        <image class="input-icon" src="../../static/账号.png" mode="aspectFit"></image>
+        <image class="input-icon" src="/static/账号.png" mode="aspectFit"></image>
         <input type="number" v-model="phone" placeholder="请输入用户名" class="input-field" />
         <text class="input-arrow">></text>
       </view>
 
       <!-- 密码输入 -->
       <view class="input-group">
-        <image class="input-icon" src="../../static/密码.png" mode="aspectFit"></image>
+        <image class="input-icon" src="/static/密码.png" mode="aspectFit"></image>
         <input :type="showPassword ? 'text' : 'password'" v-model="password" placeholder="请输入密码" class="input-field" />
         <view class="input-eye" @click="togglePasswordVisibility">
-          <image :src="showPassword ? '../../static/显示.png' : '../../static/隐藏.png'" mode="aspectFit"
+          <image :src="showPassword ? '/static/显示.png' : '/static/隐藏.png'" mode="aspectFit"
             style="width: 28rpx; height: 28rpx;"></image>
         </view>
       </view>
@@ -58,7 +58,11 @@
   import {
     getToken,
     setToken
-  } from "../../untils/untils";
+  } from "@/untils/untils";
+  import {
+    mapState,
+    mapMutations
+  } from 'vuex';
 
   export default {
     data() {
@@ -71,6 +75,7 @@
       };
     },
     methods: {
+      ...mapMutations(['SET_USER_INFO']),
       togglePasswordVisibility() {
         const currentPassword = this.password;
         this.showPassword = !this.showPassword;
@@ -113,15 +118,30 @@
             username: this.phone,
             password: this.password
           });
+          console.log('账号登录返回的数据：', res);
+          const token = typeof res.data === 'string' ? res.data : (res.data.token || '');
+          setToken(token);
+
+          const userRes = await api.get('/appUser/info');
+          console.log('用户信息：', userRes);
+          if (userRes.code == 200) {
+            console.log(userRes.data)
+            //uni.setStorageSync('userInfo', userRes.data);
+            //console.log('保存后的userInfo:', uni.getStorageSync('userInfo'));
+            this.SET_USER_INFO(userRes.data)
+            this.$store.dispatch('loginSuccess', userRes.data);
+          }
+
           uni.showToast({
             title: '登录成功',
             icon: 'success'
           });
-          console.log('账号登录返回的数据：', res);
-          setToken(res.data);
-          uni.switchTab({
-            url: '/pages/index/index'
-          });
+
+          setTimeout(() => {
+            uni.switchTab({
+              url: '/pages/index/index'
+            });
+          }, 300);
         } catch (err) {
           console.log(err);
           uni.showToast({
@@ -179,10 +199,15 @@
                     icon: 'success'
                   });
                   setToken(response.data.token);
-                  uni.setStorageSync("userInfo")
+                  //uni.setStorageSync('userInfo', response.data.userInfo);
+                  this.SET_USER_INFO(response.data.userInfo)
+
+
+                  this.$store.dispatch('loginSuccess', response.data.userInfo);
+
                   if (response.data.needCompleteProfile) {
                     uni.navigateTo({
-                      url: '/pages/info/index'
+                      url: '/subpkg/info/index'
                     })
                   } else {
                     uni.switchTab({
@@ -197,8 +222,16 @@
                 }
               } catch (err) {
                 console.error('请求失败', err);
+                let errorMsg = '网络错误';
+                if (err.type === 'network') {
+                  errorMsg = '网络连接失败，请检查服务器';
+                } else if (err.type === 'business' && err.data) {
+                  errorMsg = err.data.message || '业务错误';
+                } else if (err.data && err.data.message) {
+                  errorMsg = err.data.message;
+                }
                 uni.showToast({
-                  title: err.data.message,
+                  title: errorMsg,
                   icon: "error"
                 })
               }
@@ -222,7 +255,7 @@
 
       navigateToRegister() {
         uni.navigateTo({
-          url: '/pages/register/register',
+          url: '/subpkg/register/register',
         });
       }
     }

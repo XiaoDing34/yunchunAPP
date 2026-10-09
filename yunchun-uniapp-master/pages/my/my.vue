@@ -3,7 +3,7 @@
     <view class="user-info">
       <image class="avatar" :src="getAvatarUrl()" mode="aspectFit"></image>
       <view class="user-detail">
-        <text class="user-name">{{userInfo.nickname||userInfo.username}}</text>
+        <text class="user-name">{{userInfo.username===null?userInfo.nickname:userInfo.username}}</text>
         <text class="user-role">{{userInfo.position}}</text>
       </view>
       <text class="arrow">›</text>
@@ -35,47 +35,50 @@
     <view class="logout-section">
       <button class="logout-button" @click="handleLogout">退出登录</button>
     </view>
+
+    <CustomTabbar />
   </view>
 </template>
 
 <script>
   import userCache from '@/untils/userCache.js';
   import api from "@/untils/request.js"
+  import CustomTabBar from '@/components/custom-tab-bar/custom-tab-bar.vue'
+  import {
+    mapState
+  } from 'vuex';
   export default {
+    components: {
+      CustomTabbar: CustomTabBar
+    },
     data() {
-      return {
-        userInfo: {}
-      };
+      return {};
     },
-    async mounted() {
-      // 先显示缓存
-      const cached = uni.getStorageSync('userInfo');
-      if (cached) this.userInfo = cached;
-      // 后台刷新
-      const latest = await userCache.getUserInfo(true);
-      this.userInfo = latest;
+    computed: {
+      ...mapState(['userInfo'])
     },
+    mounted() {},
     methods: {
       getAvatarUrl() {
         const avatar = this.userInfo.avatar;
         if (!avatar) {
           return '../../static/我的-资料.png';
         }
-        return 'http://localhost:9095' + avatar;
+        return avatar;
       },
       handleProfile() {
         uni.navigateTo({
-          url: '/pages/profile/profile'
+          url: '/subpkg/profile/profile'
         })
       },
       handleSettings() {
         uni.navigateTo({
-          url: '/pages/settings/settings'
+          url: '/subpkg/settings/settings'
         });
       },
       handleHelp() {
         uni.navigateTo({
-          url: '/pages/help/help'
+          url: '/subpkg/help/help'
         });
       },
       handleAbout() {
@@ -97,10 +100,9 @@
           success: async (res) => {
             if (res.confirm) {
               await api.get('/appUser/logout')
-              uni.reLaunch({
-                url: '/pages/login/login'
-              });
               uni.removeStorageSync('yunchun');
+              uni.removeStorageSync('userInfo');
+              this.$store.dispatch('logout');
             }
           }
         });
@@ -113,7 +115,7 @@
   .my-container {
     min-height: 100vh;
     background-color: #f5f5f5;
-    padding-bottom: 120rpx;
+    padding-bottom: 140rpx;
   }
 
   .user-info {

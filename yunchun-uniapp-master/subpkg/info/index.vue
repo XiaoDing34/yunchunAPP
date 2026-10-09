@@ -78,9 +78,9 @@
         countdown: 0,
         timer: null,
         avatarUrl: '../../static/我的-资料.png',
+        avatarChanged: false,
         positions: ['请选择职位', '普通员工', '负责人', '其他'],
-        organizations: ['请输入所属单位', '天津农学院', '东润发鸡舍', '珍宝岛药业', '其他'],
-        flag: ''
+        organizations: ['请输入所属单位', '天津农学院', '东润发鸡舍', '珍宝岛药业', '其他']
       };
     },
     onUnload() {
@@ -92,6 +92,7 @@
     methods: {
       onChooseAvatar(e) {
         this.avatarUrl = e.detail.avatarUrl;
+        this.avatarChanged = true;
         console.log(this.avatarUrl);
       },
       async sendVerifyCode() {
@@ -160,95 +161,136 @@
         });
       },
       async handleConfirm() {
-        if (!this.formData.nickname) {
+        const {
+          nickname,
+          phone,
+          verifyCode,
+          organization,
+          position
+        } = this.formData;
+
+        if (!nickname) {
           uni.showToast({
             title: '请输入昵称',
             icon: 'none'
           });
           return;
         }
-        if (!this.formData.phone) {
+        if (!phone || phone.length !== 11) {
           uni.showToast({
-            title: '请输入手机号',
+            title: '请输入正确的手机号',
             icon: 'none'
           });
           return;
         }
-        if (!this.formData.organization) {
+        if (!verifyCode) {
+          uni.showToast({
+            title: '请输入验证码',
+            icon: 'none'
+          });
+          return;
+        }
+        if (!organization) {
           uni.showToast({
             title: '请输入所属单位',
             icon: 'none'
           });
           return;
         }
-        if (!this.formData.position) {
+        if (!position) {
           uni.showToast({
-            title: '请输入职位',
+            title: '请选择职位',
             icon: 'none'
           });
           return;
         }
 
         uni.showLoading({
-          title: '保存中...'
+          title: '保存中...',
+          mask: true
         });
 
-        setTimeout(() => {
-          uni.hideLoading();
+        try {
+          //1. 提交手机号、验证码、单位、职位（验证码最关键，先校验）
+          await api.put('/appUser/updateLoginInfo', {
+            phone,
+            code: verifyCode,
+            organization,
+            position
+          });
 
+          //2. 更新昵称（后端 @RequestParam，必须走 query 参数）
+          await api.put('/appUser/nickname?nickname=' + encodeURIComponent(nickname));
+
+          //3. 仅当用户选择了新头像时才上传
+          if (this.avatarChanged) {
+            const avatarUrl = await this.uploadAvatar();
+            this.avatarUrl = avatarUrl;
+            //同步到 Vuex userInfo（SET_USER_INFO 内部会持久化到本地存储）
+            this.$store.commit('SET_USER_INFO', {
+              ...this.$store.state.userInfo,
+              avatar: avatarUrl
+            });
+          }
+
+          uni.hideLoading();
+          uni.showToast({
+            title: '保存成功',
+            icon: 'success'
+          });
+          setTimeout(() => {
+            uni.switchTab({
+              url: '/pages/index/index'
+            });
+          }, 800);
+        } catch (err) {
+          uni.hideLoading();
+          console.log('保存失败', err);
+          const msg = (err.data && err.data.message) || '保存失败';
+          uni.showToast({
+            title: msg,
+            icon: 'none'
+          });
+        }
+      },
+      uploadAvatar() {
+        return new Promise((resolve, reject) => {
           uni.uploadFile({
-            url: 'http://localhost:9095/appUser/avatar',
+            url: 'http://localhost:9095/appUser/upload/avatar',
             filePath: this.avatarUrl,
             name: 'file',
             header: {
               'Authorization': getToken()
             },
             success: (res) => {
-              console.log('微信头像保存成功', res);
+              try {
+                const data = JSON.parse(res.data);
+                if (data.code === 200) {
+                  //兼容 data 为 {avatar:'xxx'} 或直接是 URL 字符串两种返回
+                  const avatarUrl = (data.data && data.data.avatar) ? data.data.avatar : data.data;
+                  resolve(avatarUrl);
+                } else {
+                  reject({
+                    data
+                  });
+                }
+              } catch (e) {
+                reject({
+                  data: {
+                    message: '头像上传响应解析失败'
+                  }
+                });
+              }
             },
-            fail: (res) => {
-              console.log('微信头像保存失败')
+            fail: () => {
+              reject({
+                data: {
+                  message: '头像上传失败'
+                }
+              });
             }
           });
-        }, 1000);
-        try {
-          const res = await api.put('/appUser/nickname', this.formData.nickname)
-        } catch (err) {
-          console.log(err)
-        };
-        try {
-          const res = await api.put('/appUser/updateLoginInfo', {
-            phone: this.formData.phone,
-            code: this.formData.verifyCode,
-            organization: this.formData.organization,
-            position: this.formData.position
-          })
-          if (!res.code == 200) {
-            uni.showToast({
-              title: '验证码错误或过期，请重新获取！',
-              icon: 'fail'
-            })
-          } else {
-            this.flag = 3
-          }
-        } catch (err) {
-          console.log(err)
-        };
-        if (this.flag == 3) {
-          uni.showToast({
-            title: '保存成功',
-            icon: 'success'
-          });
-          uni.switchTab({
-            url: '/pages/index/index'
-          })
-        } else {
-          uni.showToast({
-            title: '保存失败',
-            icon: 'fail'
-          })
-        }
-
+        });
       }
     }
   };

@@ -1,5 +1,6 @@
 package edu.tianjinagriculture.yunchunapp.controller;
 
+import cn.dev33.satoken.stp.StpUtil;
 import edu.tianjinagriculture.yunchunapp.VO.WarnMessageVO;
 import edu.tianjinagriculture.yunchunapp.commom.Result;
 import edu.tianjinagriculture.yunchunapp.dto.WarnMessageDTO;
@@ -21,6 +22,7 @@ public class WarnMessageController {
 
     @PostMapping("/addWarnMessage")
     public Result<String> addWarnMessage(@RequestBody WarnMessageDTO warnMessageDTO) {
+        System.out.println(warnMessageDTO);
         //System.out.println(warnMessageDTO);
         return Result.success(warnMessageService.addWarnMessage(warnMessageDTO));
     }
@@ -28,5 +30,26 @@ public class WarnMessageController {
     @GetMapping("/getAllMessage")
     public Result<List<WarnMessageVO>> getAllMessage() {
         return Result.success(warnMessageService.getAllMessage());
+    }
+
+    @DeleteMapping("/delWarnMessage")
+    public Result<String> delMessage(Integer id){
+        System.out.println(id);
+        String r=warnMessageService.delWarnMessage(id);
+        System.out.println(r);
+        if (r.equals("删除成功！")){
+            return Result.success(r);
+        }
+        return Result.error(r);
+    }
+
+    @PutMapping("/feedback")
+    public Result<String> feedback(Integer id, Integer feedbackStatus, Integer handleStatus) {
+        Integer handlerId = StpUtil.getLoginIdAsInt();
+        String r = warnMessageService.feedback(id, feedbackStatus, handleStatus, handlerId);
+        if (r.equals("反馈成功")) {
+            return Result.success(r);
+        }
+        return Result.error(r);
     }
 }

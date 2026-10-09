@@ -6,27 +6,25 @@
       }
     },
     {
-      "path": "pages/info/index",
-      "style": {
-        "navigationBarTitleText": "个人资料"
-      }
-    },
-    {
       "path": "pages/index/index",
       "style": {
-        "navigationBarTitleText": "首页"
+        "navigationBarTitleText": "首页",
+        "enablePullDownRefresh": true,
+        "backgroundColor": "#f5f5f5"
       }
     },
     {
       "path": "pages/alarm/alarm",
       "style": {
-        "navigationBarTitleText": "报警信息"
+        "navigationBarTitleText": "报警信息",
+        "enablePullDownRefresh": true,
+        "backgroundColor": "#f5f5f5"
       }
     },
     {
       "path": "pages/config/config",
       "style": {
-        "navigationBarTitleText": "组态监控"
+        "navigationBarTitleText": "组态"
       }
     },
     {
@@ -36,42 +34,78 @@
       }
     },
     {
-      "path": "pages/register/register",
+      "path": "pages/energy-analysis/energy-analysis",
       "style": {
-        "navigationBarTitleText": "注册"
+        "navigationBarTitleText": "能耗分析"
       }
     },
     {
-      "path": "pages/history/history",
+      "path": "pages/management/management",
       "style": {
-        "navigationBarTitleText": "历史数据"
+        "navigationBarTitleText": "管理",
+        "enablePullDownRefresh": true,
+        "backgroundColor": "#f5f5f5"
       }
     },
     {
-      "path": "pages/profile/profile",
+      "path": "pages/boiler-home/boiler-home",
       "style": {
-        "navigationBarTitleText": "个人资料"
-      }
-    },
-    {
-      "path": "pages/settings/settings",
-      "style": {
-        "navigationBarTitleText": "设置"
-      }
-    },
-    {
-      "path": "pages/help/help",
-      "style": {
-        "navigationBarTitleText": "帮助中心"
-      }
-    },
-    {
-      "path": "compoents/data-item/data-item",
-      "style": {
-        "navigationBarTitleText": ""
+        "navigationBarTitleText": "锅炉首页"
       }
     }
   ],
+  "subPackages": [{
+    "root": "subpkg",
+    "pages": [{
+        "path": "config-detail/config-detail",
+        "style": {
+          "navigationBarTitleText": "设备组态"
+        }
+      },
+      {
+        "path": "config-module/config-module",
+        "style": {
+          "navigationBarTitleText": "组态模块"
+        }
+      },
+      {
+        "path": "help/help",
+        "style": {
+          "navigationBarTitleText": "帮助中心"
+        }
+      },
+      {
+        "path": "history/history",
+        "style": {
+          "navigationBarTitleText": "历史数据"
+        }
+      },
+      {
+        "path": "info/index",
+        "style": {
+          "navigationBarTitleText": "个人资料"
+        }
+      },
+      {
+        "path": "profile/profile",
+        "style": {
+          "navigationBarTitleText": "个人资料"
+        }
+      },
+      {
+        "path": "register/register",
+        "style": {
+          "navigationBarTitleText": "注册"
+        }
+      },
+      {
+        "path": "settings/settings",
+        "style": {
+          "navigationBarTitleText": "设置"
+        }
+      }
+    ]
+  }],
   "globalStyle": {
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "云春服务",
@@ -79,33 +113,31 @@
     "backgroundColor": "#F8F8F8"
   },
   "tabBar": {
+    "custom": true,
     "color": "#999999",
     "selectedColor": "#1890ff",
     "borderStyle": "black",
     "backgroundColor": "#ffffff",
     "list": [{
-        "pagePath": "pages/index/index",
-        "text": "首页",
-        "iconPath": "static/主页.png",
-        "selectedIconPath": "static/主页 -avtive.png"
+        "pagePath": "pages/index/index"
       },
       {
-        "pagePath": "pages/alarm/alarm",
-        "text": "报警",
-        "iconPath": "static/报警信息.png",
-        "selectedIconPath": "static/报警信息-active.png"
+        "pagePath": "pages/alarm/alarm"
       },
       {
-        "pagePath": "pages/config/config",
-        "text": "组态",
-        "iconPath": "static/组态.png",
-        "selectedIconPath": "static/组态-active.png"
+        "pagePath": "pages/config/config"
       },
       {
-        "pagePath": "pages/my/my",
-        "text": "我的",
-        "iconPath": "static/我的.png",
-        "selectedIconPath": "static/我的 active.png"
+        "pagePath": "pages/my/my"
+      },
+      {
+        "pagePath": "pages/boiler-home/boiler-home"
+      },
+      {
+        "pagePath": "pages/management/management"
+      },
+      {
+        "pagePath": "pages/energy-analysis/energy-analysis"
       }
     ]
   },

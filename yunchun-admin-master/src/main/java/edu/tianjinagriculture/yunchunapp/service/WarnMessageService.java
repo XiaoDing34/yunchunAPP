@@ -14,4 +14,8 @@ public interface WarnMessageService extends IService<WarnMessage> {
      String addWarnMessage(WarnMessageDTO warnMessageDTO);
 
      List<WarnMessageVO> getAllMessage();
+
+    String delWarnMessage(Integer id);
+    public String uploadAudio(byte[] audioData, String alertId);
+    String feedback(Integer id, Integer feedbackStatus, Integer handleStatus, Integer handlerId);
 }

@@ -6,7 +6,7 @@
 
     <view class="content">
       <view class="filter-section">
-        <view class="filter-item">
+        <view class="filter-item" @click="showTimeRangePicker = true">
           <text class="filter-label">时间范围</text>
           <view class="filter-picker">
             <text class="filter-text">{{ timeRange }}</text>
@@ -39,6 +39,23 @@
         </view>
       </view>
     </view>
+
+    <!-- 时间范围选择弹窗 -->
+    <uni-popup ref="timeRangePopup" type="bottom" :animation="true">
+      <view class="picker-popup">
+        <view class="picker-header">
+          <text class="picker-title">选择时间范围</text>
+          <view class="picker-close" @click="showTimeRangePicker = false">✕</view>
+        </view>
+        <view class="picker-content">
+          <view class="picker-option" v-for="option in timeRangeOptions" :key="option.value"
+            @click="selectTimeRange(option)">
+            <text class="option-text">{{ option.label }}</text>
+            <view v-if="timeRange === option.label" class="option-check">✓</view>
+          </view>
+        </view>
+      </view>
+    </uni-popup>
   </view>
 </template>
 
@@ -49,12 +66,26 @@
     name: 'history',
     data() {
       return {
-        timeRange: '一小时',
+        timeRange: '12小时',
         dataType: '温度',
         valueId: 0,
         valueName: '',
         historyData: [],
         chartData: {},
+        showTimeRangePicker: false,
+        timeRangeOptions: [{
+            label: '12小时',
+            value: '12'
+          },
+          {
+            label: '24小时',
+            value: '24'
+          },
+          {
+            label: '7天',
+            value: '168'
+          }
+        ],
         opts: {
           color: ["#91CB74", "#FAC858", "#EE6666", "#73C0DE", "#3CA272", "#FC8452", "#9A60B4", "#ea7ccc"],
           padding: [20, 20, 0, 20],
@@ -63,7 +94,7 @@
             show: false
           },
           xAxis: {
-            itemCount: 8,
+            itemCount: 5,
             type: 'category',
             disableGrid: true,
             axisLineColor: '#E2E8F0',
@@ -108,7 +139,21 @@
       console.log('onShow called');
       this.loadHistoryData();
     },
+    watch: {
+      showTimeRangePicker(val) {
+        if (val) {
+          this.$refs.timeRangePopup.open();
+        } else {
+          this.$refs.timeRangePopup.close();
+        }
+      }
+    },
     methods: {
+      selectTimeRange(option) {
+        this.timeRange = option.label;
+        this.showTimeRangePicker = false;
+        this.loadHistoryData(option.value);
+      },
       formatTime(dateString) {
         const date = new Date(dateString);
         const year = date.getFullYear().toString();
@@ -157,14 +202,15 @@
         }
       },
 
-      loadHistoryData() {
-        console.log('loadHistoryData called, valueId:', this.valueId);
+      loadHistoryData(timeRange = '12') {
+        console.log('loadHistoryData called, valueId:', this.valueId, 'timeRange:', timeRange);
         if (!this.valueId) {
           console.error('valueId is empty or 0');
           return;
         }
-        api.get('/history/getValueByValueId', {
-          valueId: this.valueId
+        api.post('/history/getValueByValueIdAndTime', {
+          valueId: this.valueId,
+          timeRange: timeRange
         }).then(res => {
           this.historyData = res.data.map(item => {
             return {
@@ -316,5 +362,67 @@
   .data-status.error {
     background-color: #fee2e2;
     color: #dc2626;
+  }
+
+  .picker-popup {
+    background-color: #ffffff;
+    border-radius: 32rpx 32rpx 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .picker-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 32rpx;
+    border-bottom: 1rpx solid #f1f5f9;
+  }
+
+  .picker-title {
+    font-size: 32rpx;
+    font-weight: 600;
+    color: #1e293b;
+  }
+
+  .picker-close {
+    width: 56rpx;
+    height: 56rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32rpx;
+    color: #94a3b8;
+  }
+
+  .picker-content {
+    padding: 16rpx 0;
+  }
+
+  .picker-option {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 32rpx;
+  }
+
+  .picker-option:active {
+    background-color: #f8fafc;
+  }
+
+  .option-text {
+    font-size: 30rpx;
+    color: #334155;
+  }
+
+  .option-check {
+    width: 40rpx;
+    height: 40rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #3b82f6;
+    color: #ffffff;
+    border-radius: 50%;
+    font-size: 24rpx;
   }
 </style>

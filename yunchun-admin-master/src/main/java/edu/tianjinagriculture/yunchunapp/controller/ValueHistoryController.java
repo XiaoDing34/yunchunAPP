@@ -3,6 +3,7 @@ package edu.tianjinagriculture.yunchunapp.controller;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 
 import edu.tianjinagriculture.yunchunapp.commom.Result;
+import edu.tianjinagriculture.yunchunapp.dto.ValueHistoryDTO;
 import edu.tianjinagriculture.yunchunapp.entity.ValueHistory;
 import edu.tianjinagriculture.yunchunapp.service.ValueHistoryService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +28,15 @@ public class ValueHistoryController {
         queryWrapper.last("limit 24");
         List<ValueHistory> list = valueHistoryService.list(queryWrapper);
         Collections.reverse(list);
+
+        return Result.success(list);
+    }
+
+    @PostMapping("/getValueByValueIdAndTime")
+    public Result<List<ValueHistory>> getValueByValueIdAndTime(@RequestBody ValueHistoryDTO valueHistoryDTO){
+        System.out.println(valueHistoryDTO);
+        List<ValueHistory> list=valueHistoryService.getValueByValueIdAndTime(valueHistoryDTO);
+        System.out.println(list);
         return Result.success(list);
     }
 }
